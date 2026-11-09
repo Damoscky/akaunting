@@ -5,6 +5,7 @@ namespace Tests\Feature\Purchases;
 use App\Exports\Purchases\Vendors as Export;
 use App\Jobs\Common\CreateContact;
 use App\Models\Common\Contact;
+use App\Models\Document\Document;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Maatwebsite\Excel\Facades\Excel;
@@ -122,6 +123,27 @@ class VendorsTest extends FeatureTestCase
         $this->assertFlashLevel('success');
 
         $this->assertSoftDeleted('contacts', $request);
+    }
+
+    public function testItShouldNotDeleteVendorIfHasRelations()
+    {
+        $vendor = Contact::factory()->vendor()->create();
+
+        Document::factory()->bill()->create([
+            'contact_id'   => $vendor->id,
+            'contact_name' => $vendor->name,
+        ]);
+
+        $this->loginAs()
+            ->delete(route('vendors.destroy', $vendor->id))
+            ->assertStatus(200);
+
+        $this->assertFlashLevel('danger');
+
+        $this->assertDatabaseHas('contacts', [
+            'id'         => $vendor->id,
+            'deleted_at' => null,
+        ]);
     }
 
     public function testItShouldExportVendors()

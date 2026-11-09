@@ -5,6 +5,7 @@ namespace Tests\Feature\Sales;
 use App\Exports\Sales\Customers\Customers as Export;
 use App\Jobs\Common\CreateContact;
 use App\Models\Common\Contact;
+use App\Models\Document\Document;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Maatwebsite\Excel\Facades\Excel;
@@ -140,8 +141,23 @@ class CustomersTest extends FeatureTestCase
 
     public function testItShouldNotDeleteCustomerIfHasRelations()
     {
-        $this->assertTrue(true);
-        //TODO : This will write after done invoice and revenues tests.
+        $customer = Contact::factory()->customer()->create();
+
+        Document::factory()->invoice()->create([
+            'contact_id'   => $customer->id,
+            'contact_name' => $customer->name,
+        ]);
+
+        $this->loginAs()
+            ->delete(route('customers.destroy', $customer->id))
+            ->assertStatus(200);
+
+        $this->assertFlashLevel('danger');
+
+        $this->assertDatabaseHas('contacts', [
+            'id'         => $customer->id,
+            'deleted_at' => null,
+        ]);
     }
 
     public function testItShouldExportCustomers()
